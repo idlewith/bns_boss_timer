@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时刷新当前时间</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid black;
+            text-align: center;
+            padding: 8px;
+            white-space: nowrap;
+        }
+
+        .highlight {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1>当前时间: <span id="current-time"></span></h1>
+<button onclick="addRow()">添加行</button>
+<button onclick="addColumn()">添加列</button>
+<table>
+    <thead>
+    <tr id="header-row">
+        <th>序号</th>
+        <th>时间</th>
+        <!-- Initial 12 columns -->
+        <th>+5分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+10分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+15分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+20分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+25分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+30分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+35分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+40分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+45分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+50分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>+55分钟
+            <button onclick="deleteColumn(this)">删</button>
+        </th>
+        <th>操作</th>
+    </tr>
+    </thead>
+    <tbody id="table-body">
+    <!-- Rows will be added here dynamically -->
+    </tbody>
+</table>
+
+<script>
+    let columnCount = 11;
+
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleTimeString();
+
+        const rows = document.querySelectorAll('#table-body tr');
+        rows.forEach(row => {
+            const baseTimeCell = row.querySelector('td:nth-child(2) input[type="time"]');
+            if (baseTimeCell && baseTimeCell.value) {
+                const baseTimeString = baseTimeCell.value;
+                const currentDate = now.toISOString().split('T')[0];
+                const baseTime = new Date(`${currentDate}T${baseTimeString}`);
+                if (isNaN(baseTime)) return; // Skip invalid dates
+
+                for (let i = 2; i < 2 + columnCount; i++) {
+                    const cell = row.querySelector(`td:nth-child(${i + 1})`);
+                    const newTime = new Date(baseTime.getTime() + (i - 1) * 5 * 60000);
+                    const newTimeString = newTime.toTimeString().substr(0, 8);
+                    cell.textContent = newTimeString;
+
+                    const cellTime = new Date(`${currentDate}T${newTimeString}`);
+                    {#const diff = Math.abs(now - cellTime);#}
+                    const diff = Math.abs(cellTime - now);
+
+                    // 60000
+                    if (diff < 30000) { // less than 60 seconds
+                        cell.classList.add('highlight');
+                    } else {
+                        cell.classList.remove('highlight');
+                    }
+                }
+            }
+        });
+    }
+
+    function addRow() {
+        const tableBody = document.getElementById('table-body');
+        const rowCount = tableBody.rows.length + 1;
+        const row = tableBody.insertRow();
+
+        let cellsHtml = `<td><input type="number" value="${rowCount}" /></td>
+                             <td>
+                                <input type="time" step="1" />
+                                <button onclick="setCurrentTime(this)">现在时间</button>
+                             </td>`;
+
+        for (let i = 0; i < columnCount; i++) {
+            cellsHtml += `<td></td>`;
+        }
+
+        cellsHtml += `
+                <td>
+                    <button onclick="moveUp(this)">上移</button>
+                    <button onclick="moveDown(this)">下移</button>
+                    <button onclick="deleteRow(this)">删</button>
+                </td>`;
+        row.innerHTML = cellsHtml;
+    }
+
+    function setCurrentTime(button) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const currentTime = `${hours}:${minutes}:${seconds}`;
+
+        const input = button.previousElementSibling;
+        input.value = currentTime;
+    }
+
+    function deleteRow(button) {
+        const row = button.parentElement.parentElement;
+        row.remove();
+    }
+
+    function addColumn() {
+        columnCount++;
+        const headerRow = document.getElementById('header-row');
+        const th = document.createElement('th');
+        th.innerHTML = `+${columnCount * 5}分钟 <button onclick="deleteColumn(this)">删</button>`;
+        headerRow.insertBefore(th, headerRow.children[headerRow.children.length - 1]);
+
+        const rows = document.querySelectorAll('#table-body tr');
+        rows.forEach(row => {
+            const td = document.createElement('td');
+            row.insertBefore(td, row.children[row.children.length - 1]);
+        });
+    }
+
+    function deleteColumn(button) {
+        const th = button.parentElement;
+        const columnIndex = Array.prototype.indexOf.call(th.parentElement.children, th);
+
+        th.remove();
+        const rows = document.querySelectorAll('#table-body tr');
+        rows.forEach(row => {
+            row.children[columnIndex].remove();
+        });
+        columnCount--;
+    }
+
+    function moveUp(button) {
+        const row = button.parentElement.parentElement;
+        const previousRow = row.previousElementSibling;
+        if (previousRow) {
+            row.parentNode.insertBefore(row, previousRow);
+        }
+    }
+
+    function moveDown(button) {
+        const row = button.parentElement.parentElement;
+        const nextRow = row.nextElementSibling;
+        if (nextRow) {
+            row.parentNode.insertBefore(nextRow, row);
+        }
+    }
+
+    setInterval(updateTime, 1000);
+</script>
+</body>
+</html>
