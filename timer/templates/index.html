@@ -27,43 +27,47 @@
 <h1>当前时间: <span id="current-time"></span></h1>
 <button onclick="addRow()">添加行</button>
 <button onclick="addColumn()">添加列</button>
+<label for="highlight-seconds">高亮提醒间隔(秒):</label>
+<input type="number" id="highlight-seconds" value="20" onchange="updateHighlightSeconds()"/>
+<label for="interval-minutes">刷新间隔(分钟):</label>
+<input type="number" id="interval-minutes" value="5" onchange="updateIntervalMinutes()"/>
 <table>
     <thead>
     <tr id="header-row">
         <th>序号</th>
         <th>时间</th>
         <!-- Initial 12 columns -->
-        <th>+5分钟
+        <th>+<span class="interval">5</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+10分钟
+        <th>+<span class="interval">10</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+15分钟
+        <th>+<span class="interval">15</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+20分钟
+        <th>+<span class="interval">20</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+25分钟
+        <th>+<span class="interval">25</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+30分钟
+        <th>+<span class="interval">30</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+35分钟
+        <th>+<span class="interval">35</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+40分钟
+        <th>+<span class="interval">40</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+45分钟
+        <th>+<span class="interval">45</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+50分钟
+        <th>+<span class="interval">50</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
-        <th>+55分钟
+        <th>+<span class="interval">55</span>分钟
             <button onclick="deleteColumn(this)">删</button>
         </th>
         <th>操作</th>
@@ -76,32 +80,37 @@
 
 <script>
     let columnCount = 11;
+    let highlightSeconds = 20;
+    let intervalMinutes = 5;
 
     function updateTime() {
+        {#const now = new Date();#}
         const now = new Date();
         document.getElementById('current-time').textContent = now.toLocaleTimeString();
 
         const rows = document.querySelectorAll('#table-body tr');
         rows.forEach(row => {
-            const baseTimeCell = row.querySelector('td:nth-child(2) input[type="time"]');
+            const baseTimeCell = row.querySelector('td:nth-child(2) input');
             if (baseTimeCell && baseTimeCell.value) {
                 const baseTimeString = baseTimeCell.value;
-                const currentDate = now.toISOString().split('T')[0];
+
+                const offset = now.getTimezoneOffset()
+                const nowRaw = new Date(now.getTime() - (offset * 60 * 1000))
+                const currentDate = nowRaw.toISOString().split('T')[0];
+
                 const baseTime = new Date(`${currentDate}T${baseTimeString}`);
                 if (isNaN(baseTime)) return; // Skip invalid dates
 
                 for (let i = 2; i < 2 + columnCount; i++) {
                     const cell = row.querySelector(`td:nth-child(${i + 1})`);
-                    const newTime = new Date(baseTime.getTime() + (i - 1) * 5 * 60000);
+                    const newTime = new Date(baseTime.getTime() + (i - 1) * intervalMinutes * 60000);
                     const newTimeString = newTime.toTimeString().substr(0, 8);
                     cell.textContent = newTimeString;
 
                     const cellTime = new Date(`${currentDate}T${newTimeString}`);
-                    {#const diff = Math.abs(now - cellTime);#}
-                    const diff = Math.abs(cellTime - now);
+                    const diff = Math.abs(now - cellTime);
 
-                    // 60000
-                    if (diff < 30000) { // less than 60 seconds
+                    if (diff < highlightSeconds * 1000) { // less than highlightSeconds seconds
                         cell.classList.add('highlight');
                     } else {
                         cell.classList.remove('highlight');
@@ -119,7 +128,7 @@
         let cellsHtml = `<td><input type="number" value="${rowCount}" /></td>
                              <td>
                                 <input type="time" step="1" />
-                                <button onclick="setCurrentTime(this)">现在时间</button>
+                                <button onclick="setCurrentTime(this)">现在</button>
                              </td>`;
 
         for (let i = 0; i < columnCount; i++) {
@@ -135,17 +144,6 @@
         row.innerHTML = cellsHtml;
     }
 
-    function setCurrentTime(button) {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        const currentTime = `${hours}:${minutes}:${seconds}`;
-
-        const input = button.previousElementSibling;
-        input.value = currentTime;
-    }
-
     function deleteRow(button) {
         const row = button.parentElement.parentElement;
         row.remove();
@@ -155,7 +153,7 @@
         columnCount++;
         const headerRow = document.getElementById('header-row');
         const th = document.createElement('th');
-        th.innerHTML = `+${columnCount * 5}分钟 <button onclick="deleteColumn(this)">删</button>`;
+        th.innerHTML = `+<span class="interval">${columnCount * intervalMinutes}</span>分钟 <button onclick="deleteColumn(this)">删</button>`;
         headerRow.insertBefore(th, headerRow.children[headerRow.children.length - 1]);
 
         const rows = document.querySelectorAll('#table-body tr');
@@ -191,6 +189,23 @@
         if (nextRow) {
             row.parentNode.insertBefore(nextRow, row);
         }
+    }
+
+    function setCurrentTime(button) {
+        const input = button.parentElement.querySelector('input[type="time"]');
+        const now = new Date();
+        input.value = now.toTimeString().substr(0, 8);
+    }
+
+    function updateHighlightSeconds() {
+        highlightSeconds = parseInt(document.getElementById('highlight-seconds').value);
+    }
+
+    function updateIntervalMinutes() {
+        intervalMinutes = parseInt(document.getElementById('interval-minutes').value);
+        document.querySelectorAll('.interval').forEach((span, index) => {
+            span.textContent = (index + 1) * intervalMinutes;
+        });
     }
 
     setInterval(updateTime, 1000);
